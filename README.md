@@ -1,5 +1,44 @@
+##### Table of contents
+- [Some important commands](#some-important-commands)
+  - [Run a quick Python server on localhost](#run-a-quick-python-server-on-localhost)
+  - [Scapy](#scapy)
+    - [Run scapy in the terminal as root :](#run-scapy-in-the-terminal-as-root-)
+    - [Config a new TCP/UDP packet to send :](#config-a-new-tcpudp-packet-to-send-)
+    - [Voir à quoi ressemble le packet :](#voir-à-quoi-ressemble-le-packet-)
+    - [Send the packet :](#send-the-packet-)
+  - [dig](#dig)
+    - [Display important information SOA (= serial, refresh, retry, expire, negative ttl)](#display-important-information-soa--serial-refresh-retry-expire-negative-ttl)
+    - [DNSSEC awareness](#dnssec-awareness)
+    - [Flags Memo :](#flags-memo-)
+  - [BIND9](#bind9)
+    - [Run commands](#run-commands)
+  - [Sniff in monitor mode on MacOS](#sniff-in-monitor-mode-on-macos)
+
+
 # Some important commands
 
+
+
+## Run a quick Python server on localhost
+
+* Run the server on port 80
+```
+python3 -m http.server 80
+```
+
+* See what process is still running the server :
+```
+(base) quentinlao@MBP-de-Quentin test % lsof -nP -iTCP -sTCP:LISTEN | grep 8000
+
+python3.9 77244 quentinlao    5u  IPv6 0x9ceac175dda6b5a7      0t0  TCP *:8000 (LISTEN)
+```
+
+* Kill this process :
+```
+(base) quentinlao@MBP-de-Quentin test % kill -9 77244
+
+[1]  + killed     python3 -m http.server
+```
 
 ## Scapy
 
@@ -10,7 +49,7 @@
 (root㉿kali)-[/home/qlao] # scapy
 ```
 
-### Config a new TCP packet to send :
+### Config a new TCP/UDP packet to send :
 
 (S flag means _SYN_)
 ```       
@@ -80,7 +119,7 @@ Sent 1 packets.
 ```
 dig SOA polytechnique.edu
 ```
-* Ask to a specific DNS (`@8.8.8.8` is Google's one)
+* Ask to a specific DNS (`@8.8.8.8` is Google's one // `@127.0.0.1` for localhost as DNS)
 ```
 dig SOA @8.8.8.8 polytechnique.edu
 ```
@@ -179,3 +218,31 @@ apnic.net.		3600 IN	RRSIG DNSKEY 13 2 3600 (
 ;; WHEN: Sat Feb 18 15:30:32 CET 2023
 ;; MSG SIZE  rcvd: 303
 ```
+
+### Flags Memo :
+
+* qr: the message is a response (which is the case: dig received a response to our query)
+* aa: the message contains authoritative information e.g the queried server claims to be authoritative for the queried domain
+* tc: the message is truncated
+* rd: basically stored in the query to request the name server to do recursive (and not iterative) queries. rd is just copied in the response
+* ra: set by the server to indicate if recursive querying is supported.
+* cd: tell the resolver to not perform DNSSEC checks. cd is just copied in the response
+* ad: indicate that the server has verified that all RRsets are authentic.
+
+
+## BIND9
+
+### Run commands
+
+Once installed :
+```
+sudo /usr/local/sbin/named -c /etc/named.conf -d 3 -g
+```
+
+## Sniff in monitor mode on MacOS
+
+1. On Wireshark, activate the monitor mode _Capture > Options..._
+2. Generate a WPA-PSK using [this Wireshark tool](https://www.wireshark.org/tools/wpa-psk.html) (Passphrase = password of the wifi, SSID = name of the wifi)
+3. Add the WPA-PSK _Wireshark > Preferences... > Protocols > IEEE 802.11 > Edit_ and make sure that the "Enable decryption" box is checked
+4. Turn off the wifi (on the new MacOS, cannot activate the monitor mode while being connected to a wifi)
+5. Start capturing packets !
