@@ -11,6 +11,7 @@
     - [DNSSEC awareness](#dnssec-awareness)
     - [Flags Memo :](#flags-memo-)
   - [BIND9](#bind9)
+    - [Check the config](#check-the-config)
     - [Run commands](#run-commands)
   - [Sniff in monitor mode on MacOS](#sniff-in-monitor-mode-on-macos)
 
@@ -231,6 +232,12 @@ apnic.net.		3600 IN	RRSIG DNSKEY 13 2 3600 (
 
 
 ## BIND9
+
+### Check the config
+
+```
+/usr/local/sbin/named-checkconf /etc/named.conf
+```
 
 ### Run commands
 
