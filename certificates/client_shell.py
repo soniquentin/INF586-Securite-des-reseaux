@@ -7,41 +7,49 @@ from cryptography.hazmat.primitives.hashes import SHA256
 import base64
 
 #Info of the server
-HOST = "192.168.1.220" 
+HOST = "127.0.0.1"
 PORT = 65432  
 
 
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
-    #Connect to server
+    #Doing the security handshake with the client
     s.connect((HOST, PORT))
     s.sendall(b"Start connection")
 
-    #Receive the public key
     public_key_bytes = s.recv(1024)
     derdata = base64.b64decode(public_key_bytes)
     public_key = load_der_public_key(derdata, default_backend()) #Convert into a <cryptography.hazmat.backends.openssl.rsa._RSAPublicKey object>
 
-    #Generate an symmetric key and encrypt it with the server's public key
     symmetric_key = Fernet.generate_key()
+
     encrypted_symmetric_key = public_key.encrypt(symmetric_key, 
                                                 padding.OAEP( mgf=padding.MGF1(algorithm=SHA256()),
                                                             algorithm=SHA256(),
                                                             label=None
                                                             )
                                                 ) #encrypted_symmetric_key is already of type bytes
-
-    #Send this public key to the server
     s.sendall(encrypted_symmetric_key)
     
-    #Send the file encrypted with the symmetric key
+    #Ask for shell command
+    print("======= Initializing Shell ======= ")
+    data = ""
     fernet = Fernet(symmetric_key)
-    with open("file_to_send.txt", "rb") as f :
-        while True:
-            data = f.read(1024)
-            encrypted_data = fernet.encrypt(data)
-            if not data:
-                break
-            s.sendall(encrypted_data)
+    while True :
+        data = input("\n>> ")
+        if data == "quit()" :
+            break
+        data = str.encode(data)
+        encrypted_data = fernet.encrypt(data)
+
+        s.sendall(encrypted_data)
+
+        encrypted_print_data = s.recv(1024)
+
+        if encrypted_print_data:  
+            print_data = fernet.decrypt(encrypted_print_data)
+            print(print_data.decode())
+
+        
 
