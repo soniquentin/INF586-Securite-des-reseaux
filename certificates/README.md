@@ -43,3 +43,66 @@ This exercice involves 2 files :
 In a terminal tab, run the server on which the shell commands will be executed : `python server_shell.py`. On another tab, run the  client that will send the shell commands to the server in remote : `python client_shell.py`. On the client tab, we have a shell interface like a real shell but the commands are executed on the server ! The shell returns error as well.
 
 ![Fake shell](img/fakeshell.png)
+
+
+## Basic certification authority
+
+### Files
+
+```
+.
+├── certification_authority.py
+│   ├── CA_private.pem : Certification authority's private key
+│   ├── CA_public.pem : Certification authority's public key
+│   ├── certificate_data_base : Database with servers that the CA authenticates (.bin files)
+├── server_with_certification.py
+│   ├── private.pem : Server's private key
+│   ├── public.pem : Server's public key
+│   ├── <SERVERNAME>.json : Server's certificate
+├── client_with_certification.py
+│   ├── <SERVERNAME>_to_check.json : Certificate received by the client (should be the same as mycertificate.json)
+├── file_to_send.txt : file example that the client wants to send to the server
+├── file_received.txt : file decrypting the data sent by the client (should the same as file_to_send.txt)
+```
+
+### Run commands
+
+1. Generates public/private keys for the server and its certificate
+```
+python server_with_certificate.py -gen_keys
+```
+
+2. Generates public and private keys of the certification authority
+```
+python certification_authority.py -gen_keys
+```
+
+3. Authenticates a server by signing its certificate (here, `<SERVER'S NAME> = "server_very_sercure"`)
+```
+python certification_authority.py -gen_certif <SERVER'S NAME>
+```
+
+4. Run the server
+```
+python server_with_certificate.py -run
+```
+
+5. Run the client
+```
+python client_with_certificate.py
+```
+
+### Roles
+
+#### Certification authority
+
+Its goal is to authenticate servers by signing their hashed certificate. A certificate is simply a json file with the name of the server and its public key.
+
+#### Server
+
+Instead of sending its public key, the server sends its certificate to the client
+
+#### Client
+
+The client receives the certificate of the server and searches in the certification authority's database if the server exists (e.g search for the signed hashed-certificate). Then, the client verified the certificate it receives with this signature.
+

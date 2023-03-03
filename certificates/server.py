@@ -6,7 +6,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.hashes import SHA256
 
 
-HOST = "192.168.1.220"
+HOST = "127.0.0.1"
 PORT = 65432
 
 

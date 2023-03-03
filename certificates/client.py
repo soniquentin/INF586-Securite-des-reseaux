@@ -7,7 +7,7 @@ from cryptography.hazmat.primitives.hashes import SHA256
 import base64
 
 #Info of the server
-HOST = "192.168.1.220" 
+HOST = "127.0.0.1" 
 PORT = 65432  
 
 
@@ -20,6 +20,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
     #Receive the public key
     public_key_bytes = s.recv(1024)
+    print(public_key_bytes)
     derdata = base64.b64decode(public_key_bytes)
     public_key = load_der_public_key(derdata, default_backend()) #Convert into a <cryptography.hazmat.backends.openssl.rsa._RSAPublicKey object>
 
