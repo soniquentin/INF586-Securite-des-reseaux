@@ -106,3 +106,99 @@ Instead of sending its public key, the server sends its certificate to the clien
 
 The client receives the certificate of the server and searches in the certification authority's database if the server exists (e.g search for the signed hashed-certificate). Then, the client verified the certificate it receives with this signature.
 
+
+## X.509 certificates with OpenSSL
+
+### Localhost webserver setup
+
+I use XAMPP. On MacOS, XAMPP files are strored in the directory Applications > XAMPP > xamppfiles. To setup a Apache web server on the localhost :
+
+1. In the `htdocs` directory, replace the default `index.php` file with our own `index.html`
+2. Back to `xamppfiles` directory, run the Apache server on localhost with the command :
+```
+sudo ./xampp start
+```
+
+Here is what we've got :
+![testwebsite](img/testwebsite.png)
+
+This is an http website. When trying to force security by attemping to access `https://localhost` :
+![notsecured](img/notsecured.png)
+
+Our goal is to be able to run an HTTPS web server.
+
+
+3. Stop the server with :
+```
+sudo ./xampp stop
+```
+
+
+### Generate the certificates
+
+We have to generate :
+* the selfsigned certificate of the trusted CA
+* the certificate of our localhost website (mate 1) and a mate's website connected on the same network (mate 2)
+
+#### OpenSSL Commands
+
+First, we generate the certificates for the __Trusted root CA__ :
+```
+openssl req -new -sha256 -newkey rsa:2048 -nodes -keyout private_myroot.key -x509 -days 3650 -out cert_myroot.crt
+```
+
+Then, we generate the CSR for __both mates__ (1 and 2) signed by the trusted root CA:
+```
+openssl genrsa -out private_mate_i.key 2048
+openssl req -new -key private_mate_i.key -out cert_mate_{}.csr
+```
+
+Ask for the __Trusted root CA__ to signs :
+```
+openssl x509 -req -days 365 -in cert_mate_i.csr -CA cert_myroot.crt -CAkey private_myroot.key -set_serial 01 -out cert_mate_i.crt
+```
+
+#### Commands in practice
+
+To make the things easier, all the commands can be run with the unique commands :
+```
+python make.py
+```
+
+To clear all the certificates generated :
+```
+python make.py clean
+```
+
+### Incorpore the certificates
+
+#### Root CA, trusted by our browser
+
+Our browser must trust our selfsigned certificate for our root CA. I am using Google Chrome. Google Chrome trusts the certificates that our Macbook actually does. To add our root CA's certificate in the list of trusted CA :
+
+1. Double click on the file `cert_myroot.crt`. It should open the Keychain Access application and adds our certificate :
+![trustroot1](img/trustroot1.png)
+
+2. Our certificate is called "localhost" here. Double click on it. It should open a window. Select "Always trust" and close the window ;
+![trustroot2](img/trustroot2.png)
+
+Now, the root CA's certificate is trusted as written in blue :
+![trustroot3](img/trustroot3.png)
+
+
+#### Certify our Apache server
+
+We have to provide our certificate and private key to the apache server. Go to the directory Applications > XAMPP > xamppfiles > etc. 
+
+Open the `ssl.crt` directory and replace the current `server.crt` with our own certificate (`cert_mate_1.crt`). Don't forget to rename to `server.crt`.
+
+Then, open the `ssl.key` directory and replace the current `server.key` with our private key (`private_mate_1.key`). Don't forget to rename to `server.key`.
+
+Run the following command to restart the Apache webserver :
+```
+sudo ./xampp restart
+```
+
+Now, enjoy the lock at https://localhost !
+
+![lock](img/lock.png)
