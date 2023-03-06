@@ -172,6 +172,8 @@ python make.py clean
 
 ### Incorpore the certificates
 
+These section must be done by every part/mate
+
 #### Root CA, trusted by our browser
 
 Our browser must trust our selfsigned certificate for our root CA. I am using Google Chrome. Google Chrome trusts the certificates that our Macbook actually does. To add our root CA's certificate in the list of trusted CA :
