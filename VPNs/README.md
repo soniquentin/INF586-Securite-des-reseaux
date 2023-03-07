@@ -151,4 +151,130 @@ Here we are on PC1 :
 
 
 
+## TUN/TAP Interfaces
 
+I am using 2 Linux VMs. 
+
+
+### Basic VPN
+
+We will use `tunctl` that can be downloaded with the command `sudo apt-get install uml-utilities`
+
+
+1. On the server, create and configure a tap interface :
+```
+sudo tunctl -t tap0 -u server_name
+sudo ifconfig tap0 192.16.42.21/24 up
+```
+
+2. On the client, create and configure a tap interface :
+```
+sudo tunctl -t tap0 -u server_name
+sudo ifconfig tap0 192.16.42.20/24 up
+```
+
+NB : _192.16.42.21/24_ and _192.16.42.20/24_ can be arbitrary chosen
+
+3. On the server, uncomment and set the field `PermitTunnel yes`
+
+4. Restart the SSH server
+```
+sudo systemctl restart ssh.service
+```
+
+5. Run the SSH tunnel using the interface _tap0_ on obth server and client :
+```
+sudo -N -o Tunnel=ethernet -w 0:0 kali_server@10.0.2.248
+```
+
+
+Now, if the client can succesfully ping the server. This is what the server sees on Wireshark on the interface tap0 :
+
+![pingtap0](img/pingtap0.png)
+
+This is what it sees on the interface eth0 :
+
+![pingeth0](img/pingeth0.png)
+
+As expected, we observe encrypted traffic on the eth0 interface and decrypted traffic on the tap0 interface. This indicates that the SSH tunnel is working correctly and that traffic is being securely transmitted between the two endpoints.
+
+
+
+### Tunnelling program
+
+#### Context
+
+Let's right a tunnelling program in Python. The tap interface is used to capture network traffic sent and received by other applications on the same system. Our program must be able to read packets from the tap interface (i.e reading the file _/dev/net/tun_), decapsulate and encapsulate them in a custom format before sending them to their destination. 
+
+#### The program
+
+My Python program is able to encapulate IP over UDP, TCP and ping. Each format corresponds to one class with an `encapsulate` method and a `decapsulate` method. 
+
+To encrypt the traffic, notice that a private key and certificate must be generated. We'll be using a self-signed certificate here :
+```
+openssl req -new -sha256 -newkey rsa:2048 -nodes -keyout server.key -x509 -days 3650 -out server.crt
+```
+
+This is how an IP packet in encapsulated in an UDP packet. Our program adds the IP and the UDP header.
+
+```
+###[ IP ]### 
+  version   = 4
+  ihl       = None
+  tos       = 0x0
+  len       = None
+  id        = 1
+  flags     = 
+  frag      = 0
+  ttl       = 64
+  proto     = udp
+  chksum    = None
+  src       = 192.168.1.1
+  dst       = 192.168.1.2
+  \options   \
+###[ UDP ]### 
+     sport     = 1234
+     dport     = 5678
+     len       = None
+     chksum    = None
+###[ Ethernet ]### 
+        dst       = 33:33:00:00:00:16
+        src       = fe:6e:62:bc:03:e2
+        type      = IPv6
+###[ IPv6 ]### 
+           version   = 6
+           tc        = 0
+           fl        = 0
+           plen      = 36
+           nh        = Hop-by-Hop Option Header
+           hlim      = 1
+           src       = fe80::fc6e:62ff:febc:3e2
+           dst       = ff02::16
+###[ IPv6 Extension Header - Hop-by-Hop Options Header ]### 
+              nh        = ICMPv6
+              len       = 0
+              autopad   = On
+              \options   \
+               |###[ Router Alert ]### 
+               |  otype     = Router Alert [00: skip, 0: Don't change en-route]
+               |  optlen    = 2
+               |  value     = Datagram contains a MLD message
+               |###[ PadN ]### 
+               |  otype     = PadN [00: skip, 0: Don't change en-route]
+               |  optlen    = 0
+               |  optdata   = ''
+###[ MLDv2 - Multicast Listener Report ]### 
+                 type      = MLD Report Version 2
+                 res       = 0
+                 cksum     = 0xa5e
+                 reserved  = 0
+                 records_number= 1
+                 \records   \
+                  |###[ ICMPv6 MLDv2 - Multicast Address Record ]### 
+                  |  rtype     = 4
+                  |  auxdata_len= 0
+                  |  sources_number= 0
+                  |  dst       = ff02::1:ffbc:3e2
+                  |  sources   = [  ]
+                  |  auxdata   = ''
+```
